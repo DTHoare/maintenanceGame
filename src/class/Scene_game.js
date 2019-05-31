@@ -14,10 +14,10 @@ class Scene_game extends Phaser.Scene {
     var score = 0
     var scoreText = this.add.text(580, 100, 'Score: '+score, {fontSize: '24px'});
 
-    var metronome = new Hammer(this, 480, 360,
-       {period:1000,
+    var metronome = new Windows(this, 480, 360,
+       {period:2000,
         width:200,
-        green:15});
+        green:100});
 
     this.events.on('incrementScore', function () {
       score ++;

@@ -68,7 +68,6 @@ class Hammer {
     this.y = y
     this.params = params
 
-
     this.bg = scene.add.rectangle(x, y, 30, this.params.width, 0x666666);
     this.goodZone = scene.add.rectangle(x, y + this.params.width/2 - this.params.green/2, 30, this.params.green, 0x66DD66);
     this.ticker = scene.add.rectangle(x, y, 55, 5, 0xFFFFFF);
@@ -100,6 +99,73 @@ class Hammer {
   }
 }
 
+class Windows {
+
+  constructor(scene, x, y, params) {
+    this.scene = scene
+    this.x = x
+    this.y = y
+    this.params = params
+
+    this.currentState = 0;
+
+    this.bg = scene.add.rectangle(x, y, this.params.width, 30, 0x666666);
+    this.goodZone = scene.add.rectangle(x, y, this.params.green, 30, 0x66DD66);
+    this.goodZone.x = this.x + this.generateGreenPosition();
+    this.ticker = scene.add.rectangle(x, y, 5, 55, 0xFFFFFF);
+    this.ticker.depth = 15;
+
+    this.scene.events.on("preupdate", this.update, this);
+
+    this.scene.input.on("pointerdown", function() {
+      if (this.isGood()) {
+        scene.events.emit('incrementScore');
+        this.currentState++;
+        this.goodZone.width = this.params.green*(0.8**this.currentState);
+        this.goodZone.setX(this.x + this.generateGreenPosition());
+      } else {
+        this.currentState = Math.max(0, this.currentState-1);
+        this.goodZone.width = this.params.green*(0.8**this.currentState);
+        this.goodZone.setX(this.x + this.generateGreenPosition());
+      }
+      //need to destroy and recreate or the rectangle does not display correctly...
+      var x_ = this.goodZone.x
+      var width_ = this.goodZone.width
+      this.goodZone.destroy();
+      this.goodZone = scene.add.rectangle(x_, this.y, width_, 30, 0x66DD66);
+      this.goodZone.depth=10;
+    }, this);
+
+  }
+
+  generateGreenPosition() {
+    var green = this.goodZone.width;
+    return green/2-this.params.width/2 + (this.params.width - green)*Math.random();
+  }
+
+  isGood() {
+    if( Math.abs(this.ticker.x-this.goodZone.x) <= (this.ticker.width+this.goodZone.width/2) ){
+      console.log("good")
+      return true;
+    } else {
+      console.log("bad")
+      return false;
+    }
+  }
+
+  update() {
+    var t = this.scene.time.now % this.params.period
+    var delta
+    if (t < (this.params.period/2)) {
+      delta = t * this.params.width / (this.params.period/2)
+    } else {
+      delta = this.params.width - ( (t-this.params.period/2) * this.params.width / (this.params.period/2))
+    }
+    this.ticker.setPosition(this.x-this.params.width/2 + delta, this.y);
+  }
+
+}
+
 class Scene_game extends Phaser.Scene {
 
   constructor ()
@@ -116,10 +182,10 @@ class Scene_game extends Phaser.Scene {
     var score = 0
     var scoreText = this.add.text(580, 100, 'Score: '+score, {fontSize: '24px'});
 
-    var metronome = new Hammer(this, 480, 360,
-       {period:1000,
+    var metronome = new Windows(this, 480, 360,
+       {period:2000,
         width:200,
-        green:15});
+        green:100});
 
     this.events.on('incrementScore', function () {
       score ++;
