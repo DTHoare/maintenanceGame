@@ -81,8 +81,12 @@ class Windows {
     this.x = x
     this.y = y
     this.params = params
+    this.maintain = 100;
 
     this.currentState = 0;
+
+    this.hitBox = this.bg = scene.add.rectangle(x, y, this.params.width, 55);
+    this.hitBox.setInteractive();
 
     this.bg = scene.add.rectangle(x, y, this.params.width, 30, 0x666666);
     this.goodZone = scene.add.rectangle(x, y, this.params.green, 30, 0x66DD66);
@@ -92,16 +96,21 @@ class Windows {
 
     this.scene.events.on("preupdate", this.update, this);
 
-    this.scene.input.on("pointerdown", function() {
+    this.hitBox.on("pointerdown", function() {
+      console.log("click")
       if (this.isGood()) {
-        scene.events.emit('incrementScore');
+        this.scene.events.emit('incrementScore', this.currentState);
         this.currentState++;
         this.goodZone.width = this.params.green*(0.8**this.currentState);
         this.goodZone.setX(this.x + this.generateGreenPosition());
       } else {
         this.currentState = Math.max(0, this.currentState-1);
         this.goodZone.width = this.params.green*(0.8**this.currentState);
-        this.goodZone.setX(this.x + this.generateGreenPosition());
+        if (this.goodZone.x < (this.x - this.params.width/2 + this.goodZone.width /2)) {
+          this.goodZone.setX(this.x - this.params.width/2 + this.goodZone.width /2);
+        } else if(this.goodZone.x > (this.x + this.params.width/2 - this.goodZone.width /2)) {
+          this.goodZone.setX(this.x + this.params.width/2 - this.goodZone.width /2)
+        }
       }
       //need to destroy and recreate or the rectangle does not display correctly...
       var x_ = this.goodZone.x
@@ -109,7 +118,17 @@ class Windows {
       this.goodZone.destroy();
       this.goodZone = scene.add.rectangle(x_, this.y, width_, 30, 0x66DD66);
       this.goodZone.depth=10;
+      this.goodZone.alpha = this.maintenanceToAlpha(this.maintain)
     }, this);
+
+    this.scene.events.on('maintain', function(maintain) {
+      this.maintain = maintain
+      var val = this.maintenanceToAlpha(maintain)
+      this.hitBox.alpha = val
+      this.bg.alpha = val
+      this.goodZone.alpha = val
+      this.ticker.alpha = val
+    }, this)
 
   }
 
@@ -137,6 +156,10 @@ class Windows {
       delta = this.params.width - ( (t-this.params.period/2) * this.params.width / (this.params.period/2))
     }
     this.ticker.setPosition(this.x-this.params.width/2 + delta, this.y);
+  }
+
+  maintenanceToAlpha(val) {
+    return (val/100)**2.2
   }
 
 }

@@ -13,7 +13,7 @@ class Scene_menu extends Phaser.Scene {
     this.events.on('buttonPress', function (text) {
           console.log(text);
 
-          game.scene.add('Game', new Scene_game(), true)
+          game.scene.add('GameScene', new Scene_game(), true)
           this.scene.stop('MainMenu')
       }, this);
   }

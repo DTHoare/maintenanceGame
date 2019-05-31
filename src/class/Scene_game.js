@@ -6,25 +6,34 @@ class Scene_game extends Phaser.Scene {
   }
 
   preload () {
-
+    game.scene.add('UI', Scene_UI, true);
+    game.scene.start('UI');
   }
 
   create () {
-    this.add.text(80, 100, 'DEMO GAME', {fontSize: '24px'});
-    var score = 0
-    var scoreText = this.add.text(580, 100, 'Score: '+score, {fontSize: '24px'});
+    var button_maintain = new Button(this, 580, 180, 'Maintain', 'maintain');
 
     var metronome = new Windows(this, 480, 360,
        {period:2000,
         width:200,
         green:100});
 
-    this.events.on('incrementScore', function () {
-      score ++;
-      scoreText.text = 'Score: '+score;
-    },this);
-  }
+    var metronome = new Windows(this, 480, 460,
+       {period:1500,
+        width:400,
+        green:100});
 
+    this.events.on('buttonPress', function (signal) {
+      if(signal == 'maintain') {
+        game.scene.add('MaintenanceScene', Scene_maintenance, true);
+        game.scene.start('MaintenanceScene');
+        this.scene.pause();
+        this.matter.world.pause();
+      }
+    },this);
+
+
+  }
 
 
 }

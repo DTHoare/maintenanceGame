@@ -5,17 +5,17 @@ class Button {
     this.text = scene.add.text(x, y, text)
     this.text.setInteractive();
 
-    scene.input.on('gameobjectover', function (pointer, text)
+    this.text.on('pointerover', function (pointer, text)
     {
-        text.setStyle({fill: '#8888ff'})
-    }, scene);
+        this.text.setStyle({fill: '#8888ff'})
+    }, this);
 
-    scene.input.on('gameobjectout', function (pointer, text)
+    this.text.on('pointerout', function (pointer, text)
     {
-        text.setColor('#fff')
-    }, scene);
+        this.text.setColor('#fff')
+    }, this);
 
-    scene.input.on('gameobjectup', function (pointer)
+    this.text.on('pointerup', function (pointer)
     {
         scene.events.emit('buttonPress', signal);
     }, scene);

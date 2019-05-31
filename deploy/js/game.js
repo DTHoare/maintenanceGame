@@ -5,17 +5,17 @@ class Button {
     this.text = scene.add.text(x, y, text)
     this.text.setInteractive();
 
-    scene.input.on('gameobjectover', function (pointer, text)
+    this.text.on('pointerover', function (pointer, text)
     {
-        text.setStyle({fill: '#8888ff'})
-    }, scene);
+        this.text.setStyle({fill: '#8888ff'})
+    }, this);
 
-    scene.input.on('gameobjectout', function (pointer, text)
+    this.text.on('pointerout', function (pointer, text)
     {
-        text.setColor('#fff')
-    }, scene);
+        this.text.setColor('#fff')
+    }, this);
 
-    scene.input.on('gameobjectup', function (pointer)
+    this.text.on('pointerup', function (pointer)
     {
         scene.events.emit('buttonPress', signal);
     }, scene);
@@ -106,8 +106,12 @@ class Windows {
     this.x = x
     this.y = y
     this.params = params
+    this.maintain = 100;
 
     this.currentState = 0;
+
+    this.hitBox = this.bg = scene.add.rectangle(x, y, this.params.width, 55);
+    this.hitBox.setInteractive();
 
     this.bg = scene.add.rectangle(x, y, this.params.width, 30, 0x666666);
     this.goodZone = scene.add.rectangle(x, y, this.params.green, 30, 0x66DD66);
@@ -117,16 +121,21 @@ class Windows {
 
     this.scene.events.on("preupdate", this.update, this);
 
-    this.scene.input.on("pointerdown", function() {
+    this.hitBox.on("pointerdown", function() {
+      console.log("click")
       if (this.isGood()) {
-        scene.events.emit('incrementScore');
+        this.scene.events.emit('incrementScore', this.currentState);
         this.currentState++;
         this.goodZone.width = this.params.green*(0.8**this.currentState);
         this.goodZone.setX(this.x + this.generateGreenPosition());
       } else {
         this.currentState = Math.max(0, this.currentState-1);
         this.goodZone.width = this.params.green*(0.8**this.currentState);
-        this.goodZone.setX(this.x + this.generateGreenPosition());
+        if (this.goodZone.x < (this.x - this.params.width/2 + this.goodZone.width /2)) {
+          this.goodZone.setX(this.x - this.params.width/2 + this.goodZone.width /2);
+        } else if(this.goodZone.x > (this.x + this.params.width/2 - this.goodZone.width /2)) {
+          this.goodZone.setX(this.x + this.params.width/2 - this.goodZone.width /2)
+        }
       }
       //need to destroy and recreate or the rectangle does not display correctly...
       var x_ = this.goodZone.x
@@ -134,7 +143,17 @@ class Windows {
       this.goodZone.destroy();
       this.goodZone = scene.add.rectangle(x_, this.y, width_, 30, 0x66DD66);
       this.goodZone.depth=10;
+      this.goodZone.alpha = this.maintenanceToAlpha(this.maintain)
     }, this);
+
+    this.scene.events.on('maintain', function(maintain) {
+      this.maintain = maintain
+      var val = this.maintenanceToAlpha(maintain)
+      this.hitBox.alpha = val
+      this.bg.alpha = val
+      this.goodZone.alpha = val
+      this.ticker.alpha = val
+    }, this)
 
   }
 
@@ -164,6 +183,10 @@ class Windows {
     this.ticker.setPosition(this.x-this.params.width/2 + delta, this.y);
   }
 
+  maintenanceToAlpha(val) {
+    return (val/100)**2.2
+  }
+
 }
 
 class Scene_game extends Phaser.Scene {
@@ -174,25 +197,34 @@ class Scene_game extends Phaser.Scene {
   }
 
   preload () {
-
+    game.scene.add('UI', Scene_UI, true);
+    game.scene.start('UI');
   }
 
   create () {
-    this.add.text(80, 100, 'DEMO GAME', {fontSize: '24px'});
-    var score = 0
-    var scoreText = this.add.text(580, 100, 'Score: '+score, {fontSize: '24px'});
+    var button_maintain = new Button(this, 580, 180, 'Maintain', 'maintain');
 
     var metronome = new Windows(this, 480, 360,
        {period:2000,
         width:200,
         green:100});
 
-    this.events.on('incrementScore', function () {
-      score ++;
-      scoreText.text = 'Score: '+score;
-    },this);
-  }
+    var metronome = new Windows(this, 480, 460,
+       {period:1500,
+        width:400,
+        green:100});
 
+    this.events.on('buttonPress', function (signal) {
+      if(signal == 'maintain') {
+        game.scene.add('MaintenanceScene', Scene_maintenance, true);
+        game.scene.start('MaintenanceScene');
+        this.scene.pause();
+        this.matter.world.pause();
+      }
+    },this);
+
+
+  }
 
 
 }
@@ -230,9 +262,87 @@ class Scene_menu extends Phaser.Scene {
     this.events.on('buttonPress', function (text) {
           console.log(text);
 
-          game.scene.add('Game', new Scene_game(), true)
+          game.scene.add('GameScene', new Scene_game(), true)
           this.scene.stop('MainMenu')
       }, this);
+  }
+
+}
+
+class Scene_maintenance extends Phaser.Scene {
+
+  constructor ()
+  {
+    super('Maintenance');
+  }
+
+  preload () {
+
+  }
+
+  create () {
+    this.gameScene = game.scene.getScene('Game');
+    this.uiScene = game.scene.getScene('UI');
+
+    var bg = this.add.rectangle(config.width /2, config.height*0.6,
+       config.width*0.2, config.height*0.6, 0x111111);
+
+    this.return = new Button(this, config.width /2, 260, 'Return', 'return');
+
+    this.events.on('buttonPress', function (signal) {
+      if(signal == 'return') {
+        this.gameScene.scene.resume();
+        this.gameScene.matter.world.resume();
+        this.scene.remove("Maintenance")
+      }
+    },this);
+
+    var hammer = new Hammer(this, 480, 460,
+       {period:1000,
+        width:300,
+        green:100});
+
+    this.events.on('incrementScore', function() {
+      this.uiScene.updateMaintence(15);
+    }, this)
+  }
+
+
+}
+
+class Scene_UI extends Phaser.Scene {
+
+  constructor ()
+  {
+    super('UI');
+  }
+
+  preload () {
+
+  }
+
+  create () {
+    this.gameScene = game.scene.getScene('Game');
+
+    this.add.text(80, 100, 'DEMO GAME', {fontSize: '24px'});
+    this.score = 0
+    this.scoreText = this.add.text(580, 100, 'Score: '+this.score, {fontSize: '24px'});
+
+    this.maintenance = 100
+    this.maintenanceText = this.add.text(580, 130, 'Maintenance: '+this.maintenance+'%', {fontSize: '24px'});
+
+    this.gameScene.events.on('incrementScore', function (level) {
+      this.score += level **2;
+      this.scoreText.text = 'Score: '+this.score;
+      this.updateMaintence(Math.random() * -10.);
+    },this);
+  }
+
+  updateMaintence(val) {
+    this.maintenance += val
+    this.maintenance = Phaser.Math.Clamp(this.maintenance,0,100);
+    this.maintenanceText.text = 'Maintenance: '+Number(this.maintenance.toPrecision(2))+'%';
+    this.gameScene.events.emit('maintain', this.maintenance);
   }
 
 }
